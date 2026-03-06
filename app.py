@@ -68,7 +68,33 @@ def load_full_data():
         raise FileNotFoundError("未找到data.parquet文件！请确认文件和app.py同目录")
     except MemoryError:
         raise MemoryError("内存不足！Parquet已优化，若仍报错请检查服务器配置")
-
+try:
+    df = load_full_data()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("全量数据前5行")
+        st.dataframe(df.head(), width='stretch')
+    with col2:
+        st.subheader("全量数据基本信息")
+        buffer = io.StringIO()
+        df.info(buf=buffer)
+        info_str = buffer.getvalue()
+        st.code(info_str, language='text')
+    
+    memory_mb = df.memory_usage(deep=True).sum() / 1024 / 1024
+    st.success(f"✅ 全量数据加载完成！共 {len(df):,} 行 | 内存占用 {memory_mb:.0f} MB", icon="✔️")
+    
+except FileNotFoundError as e:
+    st.error(f"❌ {str(e)}", icon="🚨")
+    st.info("💡 解决：将data.parquet文件放到app.py同一文件夹", icon="ℹ️")
+    st.stop()
+except MemoryError as e:
+    st.error(f"❌ {str(e)}", icon="🚨")
+    st.stop()
+except Exception as e:
+    st.error(f"❌ 数据加载失败：{str(e)}", icon="🚨")
+    st.stop()
 
 # -------------------------- 步骤2：数据预处理与清洗 --------------------------
 st.header("2. 数据预处理与清洗")
