@@ -49,48 +49,25 @@ def preprocess_data_locally():
 # -------------------------- 第二步：缓存加载压缩后的Parquet文件（Streamlit运行） --------------------------
 @st.cache_data(persist="disk", ttl=None, show_spinner="正在加载全量数据（首次加载较慢，请稍等）...")
 def load_full_data():
-    """加载全量压缩数据，内存占用仅400MB左右"""
+    """加载 data.parquet 文件（替代原CSV）"""
+    # ========== 核心修改：读取parquet而非csv ==========
     try:
-        # 读取Parquet（替代原CSV，内存占用降80%）
-        df = pd.read_parquet('data.parquet')
+        # 本地测试：指定parquet文件路径（你的实际路径）
+        # parquet_path = r"C:\Users\lenovo\Desktop\data\data.parquet"
+        
+        # Streamlit部署：相对路径（parquet和app.py同目录）
+        parquet_path = "data.parquet"
+        
+        # 读取parquet文件（核心修改行）
+        df = pd.read_parquet(parquet_path)
         
         # 释放内存
         gc.collect()
         return df
     except FileNotFoundError:
-        raise FileNotFoundError("未找到data.parquet文件，请先执行本地预处理！")
+        raise FileNotFoundError("未找到data.parquet文件！请确认文件和app.py同目录")
     except MemoryError:
-        raise MemoryError("内存不足！请确认已将CSV转为Parquet格式")
-
-# -------------------------- 外层调用+参数修复 --------------------------
-try:
-    # 加载全量压缩数据（替换原采样逻辑）
-    df = load_full_data()
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("全量数据前5行")
-        # 修复废弃参数：use_container_width=True → width='stretch'
-        st.dataframe(df.head(), width='stretch')
-    with col2:
-        st.subheader("全量数据基本信息")
-        buffer = io.StringIO()
-        df.info(buf=buffer)
-        info_str = buffer.getvalue()
-        st.code(info_str, language='text')
-    
-    # 展示数据规模，确认加载全量
-    st.success(f"✅ 全量数据加载完成！共 {len(df):,} 行，内存占用约 {df.memory_usage(deep=True).sum()/1024/1024:.0f} MB", icon="✔️")
-    
-except FileNotFoundError as e:
-    st.error(f"❌ {str(e)} 步骤：1. 本地运行preprocess_data_locally()生成parquet；2. 将parquet文件上传到GitHub", icon="🚨")
-    st.stop()
-except MemoryError as e:
-    st.error(f"❌ {str(e)} 请确认已将CSV转为Parquet格式（而非直接读取CSV）", icon="🚨")
-    st.stop()
-except Exception as e:
-    st.error(f"❌ 数据加载失败：{str(e)}", icon="🚨")
-    st.stop()
+        raise MemoryError("内存不足！Parquet已优化，若仍报错请检查服务器配置")
 
 
 # -------------------------- 步骤2：数据预处理与清洗 --------------------------
